@@ -1,15 +1,43 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { login } from '../services/auth.service';
+import { useAuth } from '../context/AuthContext';
+import { showErrorAlert, showSuccessAlert } from '../helpers/sweetAlert';
 
 const Login = () => {
     const navigate = useNavigate();
+    const { setUser } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log({ email, password });
-    };    return (
+        setLoading(true);
+        
+        try {
+            const response = await login({ email, password });
+            
+            if (response.status === 'Success') {
+                // Guardar el usuario en el contexto
+                setUser(response.data.user);
+                
+                // Mostrar mensaje de éxito
+                showSuccessAlert('¡Bienvenido!', 'Inicio de sesión exitoso');
+                
+                // Navegar a la página Home
+                navigate('/home');
+            } else {
+                showErrorAlert('Error', response.details || 'Credenciales inválidas');
+            }
+        } catch (error) {
+            showErrorAlert('Error', error.message || 'Error al iniciar sesión');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
         <div className="min-h-screen bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 w-full max-w-md transform transition-all hover:scale-105">
                 <form className="space-y-6" onSubmit={handleSubmit}>
@@ -28,7 +56,8 @@ const Login = () => {
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="usuario@ejemplo.com"
                             required
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-300"
+                            disabled={loading}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-300 disabled:opacity-50"
                         />
                     </div>
 
@@ -43,15 +72,17 @@ const Login = () => {
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="**********"
                             required
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-300"
+                            disabled={loading}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-300 disabled:opacity-50"
                         />
                     </div>
 
                     <button 
                         type="submit" 
-                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-purple-300"
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-purple-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Iniciar sesión
+                        {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
                     </button>
                 </form>
             </div>

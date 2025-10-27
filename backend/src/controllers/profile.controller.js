@@ -1,5 +1,5 @@
-import { updateUser, deleteUser } from "../services/user.service.js";
-import { handleSuccess, handleErrorClient } from "../Handlers/responseHandlers.js";
+import { updateUser, deleteUser as deleteUserService } from "../services/user.service.js";
+import { handleSuccess, handleErrorClient, handleErrorServer } from "../Handlers/responseHandlers.js";
 import { userBodyValidation } from "../validations/usuario.validation.js";
 
 export function getPublicProfile(req, res) {
@@ -17,45 +17,39 @@ export function getPrivateProfile(req, res) {
 }
 
 export async function patchProfile(req, res) {
-  const { id } = req.user || {};
+  const { sub: id } = req.user || {}; 
   if (!id) return handleErrorClient(res, 401, "Usuario no autenticado");
 
   try {
-    const { error } = userBodyValidation.validate(req.body);
-    if (error) {
-      return handleErrorClient(
-        res,
-        400,
-        error.details.map((d) => d.message).join(", ")
-      );
+    const { email, password } = req.body || {};
+    if ((!email || !email.trim()) && (!password || !password.trim())) {
+      return handleErrorClient(res, 400, "Nada para actualizar");
     }
 
-    const { email, password } = req.body;
-    const payload = {};
-    if (typeof email === "string") payload.email = email;
-    if (typeof password === "string" && password.trim() !== "") payload.password = password;
-
-    if (Object.keys(payload).length === 0) {
-      return handleErrorClient(res, 400, "No hay campos para actualizar");
-    }
-
-    const updatedUser = await updateUser(id, payload);
-    if (updatedUser?.password) delete updatedUser.password;
-
-    return handleSuccess(res, 200, "Perfil actualizado", { user: updatedUser });
+    const updated = await updateUser(id, { email, password });
+    return handleSuccess(res, 200, "Perfil actualizado correctamente", {
+      id: updated.id,
+      email: updated.email,
+    });
   } catch (err) {
-    return handleErrorClient(res, 400, err.message);
+    if (err.message === "Usuario no encontrado") {
+      return handleErrorClient(res, 404, err.message);
+    }
+    return handleErrorServer(res, 500, "Error al actualizar el perfil", err.message);
   }
 }
 
 export async function deleteProfile(req, res) {
-  const { id } = req.user || {};
-  if (!id) return handleErrorClient(res, 400, "ID de usuario no encontrado en el token.");
+  const { sub: id } = req.user || {}; 
+  if (!id) return handleErrorClient(res, 401, "Usuario no autenticado");
 
   try {
-    await deleteUser(id);
-    return handleSuccess(res, 200, "Perfil eliminado exitosamente");
+    await deleteUserService(id); 
+    return handleSuccess(res, 200, "Perfil eliminado correctamente");
   } catch (err) {
-    return handleErrorClient(res, 400, err.message);
+    if (err.message === "Usuario no encontrado") {
+      return handleErrorClient(res, 404, err.message);
+    }
+    return handleErrorServer(res, 500, "Error al eliminar el perfil", err.message);
   }
 }

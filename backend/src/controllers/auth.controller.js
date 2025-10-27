@@ -6,15 +6,20 @@ import { handleSuccess, handleErrorClient, handleErrorServer } from "../Handlers
 export async function login(req, res) {
   try {
     const { email, password } = req.body;
-    
-    const {error}= authBodyValidation.validate(req.body)
-    if (error){
-      return handleErrorClient(res,400,"Parametros invalidos",error.message);
-    }
-    const data = await loginUser(email, password);
-    handleSuccess(res, 200, "Login exitoso", data);
-  } catch (error) {
-    handleErrorClient(res, 401, error.message);
+    const { user, token } = await loginUser(email, password);
+
+    // Si vas a leer el token con js-cookie en el frontend, no uses httpOnly
+    // (solo para demo)
+    res.cookie("jwt-auth", token, {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: false,
+      maxAge: 3600000,
+    });
+
+    return handleSuccess(res, 200, "Inicio de sesión exitoso", { user, token });
+  } catch (err) {
+    return handleErrorClient(res, 401, err.message);
   }
 }
 
